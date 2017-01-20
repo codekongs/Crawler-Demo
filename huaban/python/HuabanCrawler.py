@@ -8,15 +8,15 @@ import os
 import os.path
 
 class HuabanCrawler():
-    """ 抓去花瓣网上的图片 """
+    """ 抓取花瓣网上的图片 """
 
-    def __init__(self):
+    def __init__(self, path):
         """ 在当前文件夹下新建images文件夹存放抓取的图片 """
-        self.homeUrl = "http://huaban.com/favorite/beauty/"
         self.images = []
-        if not os.path.exists('./images'):
-            os.mkdir('./images')
-
+        self.path = path
+        self.homeUrl = "http://huaban.com/favorite/" + path
+        if not os.path.exists('./' + path):
+                os.mkdir('./' + path)
     def __load_homePage(self):
         """ 加载主页面 """
         return requests.get(url = self.homeUrl).content
@@ -31,11 +31,12 @@ class HuabanCrawler():
 
     def __process_data(self, htmlPage):
         """ 从html页面中提取图片的信息 """
-        prog = re.compile(r'app\.page\["pins"\].*')
+        prog = re.compile(b'app\.page\["pins"\].*')
         appPins = prog.findall(htmlPage)
         # 将js中的null定义为Python中的None
         null = None
         true = True
+        false = False
         if appPins == []:
             return None
         result = eval(appPins[0][19:-1])
@@ -57,24 +58,31 @@ class HuabanCrawler():
     def get_image_info(self, num=20):
         """ 得到图片信息 """
         self.__process_data(self.__load_homePage())
-        for i in range((num-1)/20):
+        for i in range(round((num-1)/20)):
             self.__process_data(self.__load_more(self.images[-1]['id']))
         return self.images
 
     def down_images(self):
         """ 下载图片 """
-        print "{} image will be download".format(len(self.images))
+        print("{} image will be download".format(len(self.images)))
         for key, image in enumerate(self.images):
-            print 'download {0} ...'.format(key)
+            print(self.path + ' download {0} ...'.format(key))
             try:
                 req = requests.get(image["url"])
             except :
-                print 'error'
-            imageName = os.path.join("./images", image["id"] + "." + image["type"])
+                print('error')
+            imageName = os.path.join("./" + self.path, image["id"] + "." + image["type"])
             self.__save_image(imageName, req.content)
 
 
 if __name__ == '__main__':
-    hc = HuabanCrawler()
-    hc.get_image_info(200)
-    hc.down_images()
+    num = input("请输入图片数目")
+    path = tuple(open('./path.txt', 'r'))
+    for x in range(0, len(path)):
+        p = path[x].rstrip('\n');
+        # self.homeUrl[x] = "http://huaban.com/favorite/" + p + "/"
+        if not os.path.exists('./' + p):
+            os.mkdir('./' + p)
+        hc = HuabanCrawler(p)
+        hc.get_image_info(int(num))
+        hc.down_images()
